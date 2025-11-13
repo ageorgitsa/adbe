@@ -61,6 +61,9 @@
 <label for="projectIdInput">Project ID (lastProjectId):</label>
 <input id="projectIdInput" type="text" placeholder="Введите или дождитесь автосохранения..." />
 
+<label for="templateIdInput">Template ID:</label>
+<input id="templateIdInput" type="text"/>
+
 <div>
     <button id="createBtn">Create</button>
     <button id="editBtn">Edit</button>
@@ -122,6 +125,8 @@
             await initAdobe();
         }
 
+        const templateID = document.getElementById("templateIdInput").value.trim();
+        
         const callbacks = {
             onPublish: (intent, publishParams) => {
                 console.log("onPublish →", publishParams);
@@ -148,7 +153,17 @@
         ];
         const containerConfig = { showLoader: true };
 
-        await editor.create({}, appConfig, exportConfig, containerConfig);
+        const inputParams = !!templateID ? {
+          docConfig: {
+            templateId: templateID  
+            // or
+            // templateType: 'BusinessCard',
+            // defaultCategory: 'Business',
+            // searchText: 'BusinessCard'
+          }
+        } : {};
+
+        await editor.create(inputParams, appConfig, exportConfig, containerConfig);
     }
 
     async function editProject() {
