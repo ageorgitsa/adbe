@@ -3,67 +3,34 @@
 <head>
     <meta charset="UTF-8" />
     <title>Adobe Express Widget Test</title>
-    <script src="https://cc-embed.adobe.com/sdk/v4/CCEverywhere.js"></script>
+    <!-- ИСПРАВЛЕНО: правильный путь к SDK -->
+    <script src="https://cc-embed.adobe.com/sdk/v4/index.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: #F2F2F7;
             padding: 30px;
         }
-        h1 {
-            font-weight: 600;
-            color: #1d1d1f;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: #6e6e73;
-            font-size: 14px;
-        }
+        h1 { font-weight: 600; color: #1d1d1f; }
+        label { display: block; margin-bottom: 6px; color: #6e6e73; font-size: 14px; }
         input {
-            width: 320px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid #d1d1d6;
-            margin-bottom: 15px;
-            font-size: 14px;
+            width: 320px; padding: 8px 12px; border-radius: 8px;
+            border: 1px solid #d1d1d6; margin-bottom: 15px; font-size: 14px;
         }
         button {
-            margin: 5px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            transition: background 0.2s;
+            margin: 5px; padding: 10px 20px; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 15px; font-weight: 500; transition: background 0.2s;
         }
-        #createBtn {
-            background-color: #007aff;
-            color: white;
-        }
-        #createBtn:hover {
-            background-color: #005fcc;
-        }
-        #editBtn {
-            background-color: #e5e5ea;
-            color: #1d1d1f;
-        }
-        #editBtn:hover {
-            background-color: #d1d1d6;
-        }
+        #createBtn { background-color: #007aff; color: white; }
+        #createBtn:hover { background-color: #005fcc; }
+        #editBtn { background-color: #e5e5ea; color: #1d1d1f; }
+        #editBtn:hover { background-color: #d1d1d6; }
     </style>
 </head>
 <body>
-
 <h1>Adobe Express Widget Test</h1>
-
 <label for="projectIdInput">Project ID (lastProjectId):</label>
 <input id="projectIdInput" type="text" placeholder="Введите или дождитесь автосохранения..." />
-
-<label for="templateIdInput">Template ID:</label>
-<input id="templateIdInput" type="text"/>
-
 <div>
     <button id="createBtn">Create</button>
     <button id="editBtn">Edit</button>
@@ -72,10 +39,10 @@
 <script>
     let editor = null;
     let lastProjectId = null;
-
-    const apiKey = "20712aef435a46099b6589d500675dda";
+    const apiKey = "xxx"; // ← Замените на ваш реальный API Key
     const appName = "Adobe App Test";
 
+    // === Скачивание PDF ===
     function downloadBase64PDF(base64Data, filename = "document.pdf") {
         try {
             const cleaned = base64Data.replace(/^data:application\/pdf;base64,/, "");
@@ -87,130 +54,123 @@
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: "application/pdf" });
             const url = URL.createObjectURL(blob);
-
             const a = document.createElement("a");
             a.href = url;
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-
             setTimeout(() => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             }, 0);
-
             console.log(`File ${filename} is loaded.`);
         } catch (e) {
             console.error("Loading error:", e);
         }
     }
 
+    // === Инициализация SDK ===
     async function initAdobe() {
         if (!window.CCEverywhere) {
-            alert("SDK not loaded!");
+            alert("SDK не загружен! Проверьте подключение к интернету.");
             return;
         }
-
-        const { editor: initializedEditor } = await window.CCEverywhere.initialize(
-            { clientId: apiKey, appName },
-            {}
-        );
-
-        editor = initializedEditor;
-        console.log("Adobe initialized");
+        try {
+            const { editor: initializedEditor } = await window.CCEverywhere.initialize(
+                { clientId: apiKey, appName },
+                { locale: 'ru-RU' } // Опционально: русский интерфейс
+            );
+            editor = initializedEditor;
+            console.log("Adobe Express SDK инициализирован");
+        } catch (err) {
+            console.error("Ошибка инициализации:", err);
+        }
     }
 
+    // === Создание нового проекта с шаблоном ===
     async function createProject() {
-        if (!editor) {
-            await initAdobe();
-        }
+        if (!editor) await initAdobe();
+        if (!editor) return;
 
-        const templateID = document.getElementById("templateIdInput").value.trim();
-        
         const callbacks = {
             onPublish: (intent, publishParams) => {
                 console.log("onPublish →", publishParams);
-                lastProjectId = publishParams.documentId;
+                lastProjectId = publishParams.projectId; // ИСПРАВЛЕНО: projectId
                 document.getElementById("projectIdInput").value = lastProjectId;
-                console.log("Saved ID: " + lastProjectId);
+                console.log("Сохранён projectId:", lastProjectId);
 
                 const asset = publishParams.asset?.[0];
                 if (asset?.data && asset.dataType === "base64" && asset.type === "pdf") {
                     downloadBase64PDF(asset.data, asset.fileName || "adobe_express.pdf");
                 }
             },
-            onError: (err) => console.error("Ошибка:", err)
+            onError: (err) => console.error("Ошибка:", err),
+            onCancel: () => console.log("Редактирование отменено")
         };
 
-        const appConfig = { callbacks, multiPage: true };
+        const inputParams = {
+            docConfig: {
+                templateId: 'urn:aaid:sceds:US:ВАШ_TEMPLATE_ID_ЗДЕСЬ' // ← ВСТАВЬТЕ СЮДА!
+                // Или используйте:
+                // templateType: 'Flyer',
+                // defaultCategory: 'Marketing',
+                // searchText: 'Визитка'
+            }
+        };
+
         const exportConfig = [
             {
                 id: "save",
-                label: "Save & Back to store",
+                label: "Сохранить и выйти",
                 action: { target: "publish" },
                 style: { uiType: "button" }
             }
         ];
-        const containerConfig = { showLoader: true };
 
-        const inputParams = !!templateID ? {
-          docConfig: {
-            templateId: templateID  
-            // or
-            // templateType: 'BusinessCard',
-            // defaultCategory: 'Business',
-            // searchText: 'BusinessCard'
-          }
-        } : {};
-
-        await editor.create(inputParams, appConfig, exportConfig, containerConfig);
+        await editor.create(inputParams, callbacks, exportConfig);
     }
 
+    // === Редактирование существующего проекта ===
     async function editProject() {
         const inputVal = document.getElementById("projectIdInput").value.trim();
         const projectIdToUse = inputVal || lastProjectId;
-
         if (!projectIdToUse) {
-            alert("Нет сохранённого projectId!");
+            alert("Нет projectId! Сначала создайте проект.");
             return;
         }
+        if (!editor) await initAdobe();
+        if (!editor) return;
 
-        if (!editor) {
-            await initAdobe();
-        }
+        const callbacks = {
+            onPublish: (intent, publishParams) => {
+                console.log("Изменения сохранены:", publishParams);
+                const asset = publishParams.asset?.[0];
+                if (asset?.data && asset.dataType === "base64" && asset.type === "pdf") {
+                    downloadBase64PDF(asset.data, asset.fileName || "edited_document.pdf");
+                }
+            },
+            onError: (err) => console.error("Ошибка:", err)
+        };
 
-        const appConfig = {
-            callbacks: {
-                onPublish: (intent, publishParams) => {
-                    console.log("onPublish →", publishParams);
-                    console.log("Changes saved");
-
-                    // Скачиваем, если есть PDF
-                    const asset = publishParams.asset?.[0];
-                    if (asset?.data && asset.dataType === "base64" && asset.type === "pdf") {
-                        downloadBase64PDF(asset.data, asset.fileName || "edited_document.pdf");
-                    }
-                },
-                onError: (err) => console.error("Error:", err)
-            }
+        const inputParams = {
+            projectId: projectIdToUse // ИСПРАВЛЕНО: projectId
         };
 
         const exportConfig = [
             {
                 id: "save",
-                label: "Save & Back to store",
+                label: "Сохранить и выйти",
                 action: { target: "publish" },
                 style: { uiType: "button" }
             }
         ];
-        const containerConfig = { showLoader: true };
 
-        await editor.edit({ documentId: projectIdToUse }, appConfig, exportConfig, containerConfig);
+        await editor.edit(inputParams, callbacks, exportConfig);
     }
 
+    // === События ===
     document.getElementById("createBtn").addEventListener("click", createProject);
     document.getElementById("editBtn").addEventListener("click", editProject);
 </script>
-
 </body>
 </html>
